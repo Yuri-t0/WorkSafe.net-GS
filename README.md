@@ -1,196 +1,241 @@
-# 🛡️ WorkSafe .NET API – Advanced Business Development with .NET
+🛡️ WorkSafe .NET API — Advanced Business Development with .NET
 
-A **WorkSafe .NET API** é uma aplicação Web API desenvolvida em **ASP.NET Core** com **EF Core** e **SQL Server**, voltada para o **cadastro e gestão de estações de trabalho** (workstations) e informações ergonômicas básicas.
+A WorkSafe .NET API é uma aplicação Web API desenvolvida com ASP.NET Core, Entity Framework Core e SQL Server, construída para demonstrar uma arquitetura limpa, validações robustas e um CRUD completo para gerenciamento de estações de trabalho (Workstations).
 
-O objetivo do projeto é demonstrar, de forma organizada e orientada a camadas:
+Este projeto faz parte da entrega da disciplina Advanced Business Development with .NET.
 
-- Modelagem de domínio e regras de negócio
-- Serviços de aplicação claros (casos de uso)
-- Persistência com EF Core (mapeamentos + migrations)
-- Exposição de uma Web API REST com validações, ProblemDetails e Swagger
+✔️ Sumário
 
----
+Arquitetura do Projeto
 
-## 🧩 1. Domínio & Arquitetura
+Domínio & Regras de Negócio
 
-### Entidade principal
+Aplicação (Serviços & DTOs)
 
-A entidade principal do domínio é:
+Infraestrutura & Dados (EF Core)
 
-- **Workstation**
-  - `Id` (int) – chave primária, gerada pelo banco
-  - `Name` (string) – nome da estação de trabalho (obrigatório)
-  - `EmployeeName` (string) – colaborador associado (obrigatório)
-  - `Department` (string) – departamento/setor (obrigatório)
-  - `MonitorDistanceCm` (int) – distância do monitor em centímetros  
-    - Regra de negócio: **deve estar entre 30 e 100 cm**
-  - Outros campos/flags podem ser adicionados conforme a evolução do domínio.
+Camada Web API (CRUD + Search)
 
-### Invariantes e regras de negócio
+Tratamento de Erros (ProblemDetails)
 
-As principais regras de negócio garantidas via validação de modelo e anotações:
+Como Executar o Projeto
 
-- **Campos obrigatórios**
-  - `Name`, `EmployeeName` e `Department` são obrigatórios.
-- **Regra ergonômica**
-  - `MonitorDistanceCm` deve estar entre **30 e 100**. Valores fora dessa faixa geram erro de validação (400).
+Endpoints Principais
 
-Essas invariantes são aplicadas na entidade/DTOs e reforçadas na camada de aplicação.
+Exemplos de Uso — CURL
 
-### Arquitetura em camadas
+Decisões Arquiteturais
 
-O projeto está organizado nas seguintes pastas:
+🧩 Arquitetura do Projeto
 
-- **Domain/**
-  - Entidades de domínio (`Workstation`) e regras centrais.
-- **Application/**
-  - **Services** de aplicação para orquestrar os casos de uso (CRUD, busca, etc.).
-  - **DTOs / ViewModels** para entrada e saída de dados.
-- **Infrastructure/**
-  - Configuração do **EF Core**, `DbContext` e **repositórios concretos**.
-  - Mapeamentos de entidades e migrations.
-- **Controllers/**
-  - Camada Web API, que expõe os endpoints REST.
-- **Migrations/**
-  - Histórico das migrações do EF Core para criação/alteração do banco.
+A solução segue uma arquitetura em camadas:
 
----
+WorkSafe.Api
+├── Domain/
+│   └── Entidades e invariantes do negócio
+├── Application/
+│   ├── Services (casos de uso)
+│   └── DTOs / ViewModels
+├── Infrastructure/
+│   ├── AppDbContext
+│   ├── Repositórios (CRUD)
+│   └── Migrations (EF Core)
+└── Web (Controllers da API)
 
-## ⚙️ 2. Aplicação (Serviços e DTOs)
+🏛️ Domínio & Regras de Negócio
+Entidade principal: Workstation
+Campo	Tipo	Regra
+Id	int	Identity
+Name	string	Obrigatório
+EmployeeName	string	Obrigatório
+Department	string	Obrigatório
+MonitorDistanceCm	int	Entre 30 e 100 cm
+Invariantes aplicadas:
 
-A camada **Application** concentra a lógica de aplicação, separando o domínio da Web API:
+Nome, empregado e departamento não podem ser vazios.
 
-- **Serviços de aplicação (`WorkstationService`, etc.)**
-  - `CreateAsync` – cria uma nova workstation a partir de um DTO de entrada.
-  - `UpdateAsync` – atualiza dados de uma workstation existente.
-  - `DeleteAsync` – remove uma workstation por Id.
-  - `GetByIdAsync` – busca por Id.
-  - **Opcional / recomendável:** métodos de **busca paginada com filtro** (ex.: por departamento, por nome, etc.).
+Distância do monitor deve estar entre 30 e 100 centímetros.
 
-- **DTOs / ViewModels**
-  - DTOs de **entrada** para criação/edição (sem expor detalhes internos do domínio).
-  - DTOs de **saída** com os dados formatados para a API.
+Validações automáticas via Data Annotations + ModelState.
 
-Essa separação garante que a Web API não dependa diretamente das entidades de domínio e facilita evolução e testes.
+⚙️ Aplicação (Serviços & DTOs)
 
----
+A camada Application contém:
 
-## ❗ 3. Tratamento de erros & validações
+✔ Serviços de aplicação
 
-A API utiliza o pipeline padrão do ASP.NET Core com validação de modelos:
+CreateAsync
 
-- Quando o corpo da requisição envia dados inválidos (campos obrigatórios vazios, ranges inválidos, etc.), o framework retorna:
-  - **HTTP 400 (Bad Request)** com um objeto no formato **`ProblemDetails`**, contendo:
-    - `title` – mensagem amigável (ex.: `"Dados inválidos enviados."`)
-    - `status` – código HTTP
-    - `errors` – dicionário com os campos e mensagens (ex.: `"MonitorDistanceCm deve estar entre 30 e 100."`)
+UpdateAsync
 
-- Erros não tratados são mapeados para **HTTP 500 (Internal Server Error)** com uma mensagem genérica:
-  - `"Erro interno no servidor. Tente novamente mais tarde."`
+DeleteAsync
 
-> Isso atende ao requisito de **validações + ProblemDetails** e evita vazar detalhes de implementação para o cliente.
+GetByIdAsync
 
----
+SearchAsync com filtros e paginação (quando disponível)
 
-## 🗄️ 4. Infra & Dados (EF Core)
+✔ DTOs / ViewModels
 
-### Banco de dados
+Separação clara entre:
 
-- Banco: **SQL Server**
-- Instância padrão utilizada: `localhost` (MSSQLSERVER padrão)
-- Nome do banco: **`WorkSafeDb`**
+Entrada: WorkstationRequestDTO
 
-A connection string pode ser ajustada em:
+Saída: WorkstationResponseDTO
 
-```json
-// appsettings.json
+Isso evita expor entidades do domínio diretamente.
+
+🗄️ Infraestrutura & Dados (EF Core)
+✔ Banco utilizado
+
+SQL Server
+
+Instância usada: localhost (MSSQLSERVER)
+
+Banco: WorkSafeDb
+
+✔ Connection String (padrão)
 "ConnectionStrings": {
   "DefaultConnection": "Server=localhost;Database=WorkSafeDb;Trusted_Connection=True;TrustServerCertificate=True"
 }
-Se estiver usando outra instância ou usuário/senha, ajuste aqui conforme sua máquina.
 
-EF Core & Repositórios
-AppDbContext configurado na camada Infrastructure, expondo o DbSet<Workstation>.
+✔ EF Core
 
-Mapeamentos via OnModelCreating e/ou EntityTypeConfiguration.
+Mapeamento via Fluent API / anotações
 
-Migrations criadas via dotnet ef migrations add.
+DbSet<Workstation>
 
-CRUD implementado via serviços + repositórios concretos na Infrastructure.
+Repositórios concretos contendo CRUD
 
-🌐 5. Camada Web (Web API)
-A API segue o padrão de controllers com boas práticas REST.
+Histórico completo em Migrations/
 
-Principais endpoints
-Prefixo base (exemplo): /api/workstations
-Substitua a porta pela que aparecer no console ao rodar a API.
+🌐 Camada Web API (CRUD + Search)
+✔ Endpoints REST com boas práticas
 
-GET /api/workstations
-Retorna a lista de workstations (pode ser paginada/filtrada).
+CRUD completo
 
-GET /api/workstations/{id}
-Busca uma workstation por Id.
+Rota base: /api/workstations
 
-POST /api/workstations
-Cria uma nova workstation.
+Respostas com códigos HTTP adequados
 
-Exemplo de corpo:
+Problemas de validação ⇒ HTTP 400
 
-json
-Copy code
+Erros internos ⇒ HTTP 500
+
+✔ Busca com filtros (quando implementada)
+GET /api/workstations/search?department=Financeiro&page=1&pageSize=10
+
+❗ Tratamento de Erros (ProblemDetails)
+
+Validações utilizam ModelState, retornando erro padrão:
+
 {
-  "name": "Estação Financeiro 01",
+  "title": "Dados inválidos enviados.",
+  "status": 400,
+  "errors": {
+    "Department": [ "The Department field is required." ]
+  }
+}
+
+
+Erros inesperados retornam:
+
+{
+  "title": "Erro interno no servidor.",
+  "status": 500,
+  "detail": "Tente novamente mais tarde."
+}
+
+🚀 Como Executar o Projeto
+1️⃣ Clonar o repositório
+git clone https://github.com/Yuri-t0/WorkSafe.net-GS.git
+cd WorkSafe.net-GS
+
+2️⃣ Ajustar a connection string (se necessário)
+
+Arquivo: appsettings.json
+
+3️⃣ Aplicar as migrations
+dotnet ef database update
+
+4️⃣ Rodar a API
+dotnet run
+
+5️⃣ Acessar o Swagger
+https://localhost:{PORT}/swagger
+
+📌 Endpoints Principais
+GET — listar todas
+GET /api/workstations
+
+GET — buscar por id
+GET /api/workstations/{id}
+
+POST — criar uma workstation
+POST /api/workstations
+{
+  "name": "Estação A",
   "employeeName": "João Silva",
   "department": "Financeiro",
   "monitorDistanceCm": 60
 }
+
+PUT — atualizar
 PUT /api/workstations/{id}
-Atualiza uma workstation existente.
 
+DELETE — remover
 DELETE /api/workstations/{id}
-Remove uma workstation.
 
-Endpoint de busca (search) com filtros e paginação (recomendado)
-Opcionalmente (e recomendado pelo enunciado), pode existir algo como:
+💻 Exemplos de Uso — cURL
+Criar workstation
+curl -X POST "https://localhost:{PORT}/api/workstations" ^
+  -H "Content-Type: application/json" ^
+  -d "{
+    \"name\": \"Estação Financeiro 01\",
+    \"employeeName\": \"João Silva\",
+    \"department\": \"Financeiro\",
+    \"monitorDistanceCm\": 60
+  }"
 
-GET /api/workstations/search?department=Financeiro&page=1&pageSize=10&orderBy=name
+Listar
+curl "https://localhost:{PORT}/api/workstations"
 
-Retornando um objeto paginado com:
+Buscar por id
+curl "https://localhost:{PORT}/api/workstations/1"
 
-itens da página
+🧠 Decisões Arquiteturais
 
-total de registros
+Separação clara Domain → Application → Infrastructure → Web API
 
-informações de próxima/anterior página
+DTOs para evitar vazamento de domínio
 
-links HATEOAS (self, next, previous).
+EF Core para persistência
 
-📚 6. Swagger / Documentação da API
-Ao rodar o projeto no perfil de desenvolvimento, o Swagger UI é habilitado automaticamente.
+Migrations versionando o banco
 
-URL típica (ajuste a porta conforme seu ambiente):
+ProblemDetails padronizando erros
 
-https://localhost:7043/swagger
+Swagger para documentação
 
-ou
+Clean Architecture simplificada
 
-http://localhost:5043/swagger
+SQL Server por compatibilidade com .NET
 
-No Swagger você consegue:
+📦 Entrega Final Atende:
 
-Ver a lista de endpoints
+✔ Domínio & invariantes
+✔ Casos de uso (serviços)
+✔ DTOs + validação + ProblemDetails
+✔ EF Core + Migrations
+✔ CRUD + Search (quando implementado)
+✔ Swagger
+✔ README completo
+✔ Comandos de instalação
+✔ Exemplos cURL
+✔ Arquitetura explicada
 
-Ver os modelos (schemas)
 
-Executar requisições de teste (GET/POST/PUT/DELETE)
+Yuri Ferreira
+RM: 559223
 
-Validar respostas e códigos HTTP
-
-🏃 7. Como rodar o projeto localmente
-Pré-requisitos
-.NET SDK 8.0+
-
-SQL Server (instância local MSSQLSERVER ou outra de sua preferência)
-
-Git
-
+João Santana
+RM: 560781
